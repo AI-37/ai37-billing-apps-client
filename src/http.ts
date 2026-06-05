@@ -27,6 +27,16 @@ export function validateOptions(options: BillingAppsClientOptions): void {
   if (!options.authToken.trim()) {
     throw new BillingConfigurationError('Billing client authToken is required')
   }
+
+  if (
+    options.runtimeStateCacheTtlMs !== undefined &&
+    (!Number.isFinite(options.runtimeStateCacheTtlMs) ||
+      options.runtimeStateCacheTtlMs < 0)
+  ) {
+    throw new BillingConfigurationError(
+      'Billing client runtimeStateCacheTtlMs must be a finite number greater than or equal to 0',
+    )
+  }
 }
 
 export async function readResponseBody(response: Response): Promise<unknown> {

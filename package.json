@@ -1,6 +1,6 @@
 {
   "name": "@ai37/billing-apps-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-agnostic client for AI37 billing-apps public API",
   "type": "module",
   "license": "MIT",
@@ -43,6 +43,9 @@
     "test": "vitest run",
     "verify": "npm run check:release && npm run lint && npm run test && npm run build",
     "prepublishOnly": "npm run verify"
+  },
+  "dependencies": {
+    "lru-cache": "^11.5.1"
   },
   "devDependencies": {
     "@types/node": "^24.11.0",

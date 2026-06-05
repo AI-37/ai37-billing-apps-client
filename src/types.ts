@@ -26,6 +26,7 @@ export interface BillingAppsClientOptions {
   baseUrl: string
   authToken: string
   timeoutMs?: number
+  runtimeStateCacheTtlMs?: number
   fetch?: BillingFetch
 }
 

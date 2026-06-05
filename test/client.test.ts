@@ -26,6 +26,17 @@ describe('createBillingAppsClient', () => {
     ).toThrow(BillingConfigurationError)
   })
 
+  it('throws when runtime state cache ttl is negative', () => {
+    expect(() =>
+      createBillingAppsClient({
+        baseUrl: 'https://billing.example.com',
+        authToken: 'secret',
+        fetch: vi.fn() as typeof fetch,
+        runtimeStateCacheTtlMs: -1,
+      }),
+    ).toThrow(BillingConfigurationError)
+  })
+
   it('fetches billing state by billingOrgId', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -59,6 +70,119 @@ describe('createBillingAppsClient', () => {
         signal: expect.any(AbortSignal),
       },
     )
+  })
+
+  it('reuses cached billing state for repeated calls within ttl', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          billingOrgId: 'org-1',
+          entitlementStatus: 'active',
+          remainingTotalTokens: 15,
+          stale: false,
+        }),
+        { status: 200 },
+      ),
+    )
+    const client = createBillingAppsClient({
+      baseUrl: 'https://billing.example.com',
+      authToken: 'apps-token',
+      fetch: fetchMock as typeof fetch,
+      runtimeStateCacheTtlMs: 10_000,
+    })
+
+    const firstState = await client.getRuntimeStateByBillingOrgId('org-1')
+    const secondState = await client.getRuntimeStateByBillingOrgId('org-1')
+
+    expect(secondState).toEqual(firstState)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('deduplicates concurrent billing state requests for the same org', async () => {
+    let resolveResponse: ((response: Response) => void) | undefined
+    const fetchMock = vi.fn().mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveResponse = resolve
+        }),
+    )
+    const client = createBillingAppsClient({
+      baseUrl: 'https://billing.example.com',
+      authToken: 'apps-token',
+      fetch: fetchMock as typeof fetch,
+      runtimeStateCacheTtlMs: 10_000,
+    })
+
+    const firstRequest = client.getRuntimeStateByBillingOrgId('org-1')
+    const secondRequest = client.getRuntimeStateByBillingOrgId('org-1')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    resolveResponse?.(
+      new Response(
+        JSON.stringify({
+          billingOrgId: 'org-1',
+          entitlementStatus: 'active',
+          remainingTotalTokens: 15,
+          stale: false,
+        }),
+        { status: 200 },
+      ),
+    )
+
+    await expect(Promise.all([firstRequest, secondRequest])).resolves.toEqual([
+      {
+        billingOrgId: 'org-1',
+        entitlementStatus: 'active',
+        remainingTotalTokens: 15,
+        stale: false,
+      },
+      {
+        billingOrgId: 'org-1',
+        entitlementStatus: 'active',
+        remainingTotalTokens: 15,
+        stale: false,
+      },
+    ])
+  })
+
+  it('does not cache failed billing state requests', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: 'temporary outage' }), {
+          status: 503,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            billingOrgId: 'org-1',
+            entitlementStatus: 'active',
+            remainingTotalTokens: 15,
+            stale: false,
+          }),
+          { status: 200 },
+        ),
+      )
+    const client = createBillingAppsClient({
+      baseUrl: 'https://billing.example.com',
+      authToken: 'apps-token',
+      fetch: fetchMock as typeof fetch,
+      runtimeStateCacheTtlMs: 10_000,
+    })
+
+    await expect(client.getRuntimeStateByBillingOrgId('org-1')).rejects.toBeInstanceOf(
+      BillingRequestError,
+    )
+
+    await expect(client.getRuntimeStateByBillingOrgId('org-1')).resolves.toMatchObject(
+      {
+        billingOrgId: 'org-1',
+        entitlementStatus: 'active',
+      },
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('throws typed error when billing state request fails', async () => {
