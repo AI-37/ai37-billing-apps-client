@@ -12,6 +12,7 @@ jobs:
     needs: ci
     permissions:
       contents: read
+      id-token: write
 
     steps:
       - name: Checkout
@@ -20,8 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
@@ -55,6 +55,4 @@ jobs:
         run: npm run build
 
       - name: Publish package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+        run: npm publish --access public --provenance

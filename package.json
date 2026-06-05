@@ -1,5 +1,5 @@
 {
-  "name": "ai37-billing-apps-client",
+  "name": "@ai37/billing-apps-client",
   "version": "0.1.0",
   "description": "Framework-agnostic client for AI37 billing-apps public API",
   "type": "module",
