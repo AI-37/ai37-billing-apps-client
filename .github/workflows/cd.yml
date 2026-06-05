@@ -2,17 +2,10 @@ name: CD
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: Semver version to publish to npm
-        required: true
-        type: string
 
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
-    with:
-      release_version: ${{ inputs.version }}
 
   publish:
     runs-on: ubuntu-latest
@@ -34,20 +27,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply release version
-        env:
-          RELEASE_VERSION: ${{ inputs.version }}
+      - name: Sync package.json version from VERSION
         run: |
+          RELEASE_VERSION=$(tr -d '[:space:]' < VERSION)
+          if [[ -z "$RELEASE_VERSION" ]]; then
+            echo 'VERSION file is empty'
+            exit 1
+          fi
+
           npm version "$RELEASE_VERSION" --no-git-tag-version --allow-same-version
-          printf '%s\n' "$RELEASE_VERSION" > VERSION
 
       - name: Validate release metadata
         run: npm run check:release
 
       - name: Ensure package version does not already exist
-        env:
-          RELEASE_VERSION: ${{ inputs.version }}
         run: |
+          RELEASE_VERSION=$(tr -d '[:space:]' < VERSION)
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           if npm view "${PACKAGE_NAME}@${RELEASE_VERSION}" version >/dev/null 2>&1; then
             echo "Package version already exists in npm: ${PACKAGE_NAME}@${RELEASE_VERSION}"
