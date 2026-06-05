@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_call:
+    inputs:
+      release_version:
+        description: Optional release version to validate before publish
+        required: false
+        type: string
+
+jobs:
+  test-and-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply selected release version
+        if: ${{ inputs.release_version != '' }}
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          npm version "$RELEASE_VERSION" --no-git-tag-version --allow-same-version
+          printf '%s\n' "$RELEASE_VERSION" > VERSION
+
+      - name: Validate VERSION and CHANGELOG were changed
+        if: ${{ github.event_name != 'workflow_call' }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+            echo "Unable to determine diff base SHA for release file validation"
+            exit 1
+          fi
+
+          changed_files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          printf 'Changed files:\n%s\n' "$changed_files"
+
+          if ! grep -qx 'VERSION' <<<"$changed_files"; then
+            echo 'CI requires VERSION to be changed'
+            exit 1
+          fi
+
+          if ! grep -qx 'CHANGELOG.md' <<<"$changed_files"; then
+            echo 'CI requires CHANGELOG.md to be changed'
+            exit 1
+          fi
+
+      - name: Validate release metadata
+        run: npm run check:release
+
+      - name: Run package verification
+        run: npm run verify

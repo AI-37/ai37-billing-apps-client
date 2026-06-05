@@ -1,0 +1,65 @@
+name: CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semver version to publish to npm
+        required: true
+        type: string
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    with:
+      release_version: ${{ inputs.version }}
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: ci
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply release version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          npm version "$RELEASE_VERSION" --no-git-tag-version --allow-same-version
+          printf '%s\n' "$RELEASE_VERSION" > VERSION
+
+      - name: Validate release metadata
+        run: npm run check:release
+
+      - name: Ensure package version does not already exist
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          if npm view "${PACKAGE_NAME}@${RELEASE_VERSION}" version >/dev/null 2>&1; then
+            echo "Package version already exists in npm: ${PACKAGE_NAME}@${RELEASE_VERSION}"
+            exit 1
+          fi
+
+          echo "Version is available for publish: ${PACKAGE_NAME}@${RELEASE_VERSION}"
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

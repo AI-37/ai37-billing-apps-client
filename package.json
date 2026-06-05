@@ -1,0 +1,53 @@
+{
+  "name": "ai37-billing-apps-client",
+  "version": "0.1.0",
+  "description": "Framework-agnostic client for AI37 billing-apps public API",
+  "type": "module",
+  "license": "MIT",
+  "author": "",
+  "keywords": [
+    "billing",
+    "lago",
+    "typescript",
+    "sdk",
+    "fetch"
+  ],
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "check:release": "node ./scripts/check-release-files.mjs",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit",
+    "prepare": "npm run build",
+    "test": "vitest run",
+    "verify": "npm run check:release && npm run lint && npm run test && npm run build",
+    "prepublishOnly": "npm run verify"
+  },
+  "devDependencies": {
+    "@types/node": "^24.11.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.8"
+  }
+}
