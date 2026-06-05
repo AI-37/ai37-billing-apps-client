@@ -1,4 +1,4 @@
-# ai37-billing-apps-client
+# @ai37/billing-apps-client
 
 Framework-agnostic TypeScript client for the public billing-apps API exposed by `billing-microservice`.
 
@@ -12,13 +12,13 @@ Framework-agnostic TypeScript client for the public billing-apps API exposed by 
 ## Install
 
 ```bash
-npm install ai37-billing-apps-client
+npm install @ai37/billing-apps-client
 ```
 
 ## Usage
 
 ```ts
-import { createBillingAppsClient } from 'ai37-billing-apps-client'
+import { createBillingAppsClient } from '@ai37/billing-apps-client'
 
 const billingClient = createBillingAppsClient({
   baseUrl: process.env.BILLING_MICROSERVICE_BASE_URL!,
