@@ -2,6 +2,10 @@
   "name": "@ai37/billing-apps-client",
   "version": "0.1.1",
   "description": "Framework-agnostic client for AI37 billing-apps public API",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AI-37/ai37-billing-apps-client"
+  },
   "type": "module",
   "license": "MIT",
   "author": "",
