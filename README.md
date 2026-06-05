@@ -24,6 +24,7 @@ const billingClient = createBillingAppsClient({
   baseUrl: process.env.BILLING_MICROSERVICE_BASE_URL!,
   authToken: process.env.BILLING_MICROSERVICE_APPS_AUTH_TOKEN!,
   timeoutMs: 5000,
+  runtimeStateCacheTtlMs: 5000,
 })
 
 const state = await billingClient.assertExecutionAllowed('billing-org-123')
@@ -51,6 +52,7 @@ Options:
 - `baseUrl: string`
 - `authToken: string`
 - `timeoutMs?: number`
+- `runtimeStateCacheTtlMs?: number` - in-memory TTL for `getRuntimeStateByBillingOrgId`; defaults to `5000`, set to `0` to disable settled-value caching while keeping in-flight request deduplication
 - `fetch?: typeof fetch`
 
 Methods:

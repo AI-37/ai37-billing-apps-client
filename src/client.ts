@@ -1,3 +1,4 @@
+import { LRUCache } from 'lru-cache'
 import { BillingExecutionDeniedError } from './errors'
 import {
   ensureOk,
@@ -20,9 +21,16 @@ export function createBillingAppsClient(
   const baseUrl = normalizeBillingBaseUrl(options.baseUrl)
   const authToken = options.authToken
   const timeoutMs = options.timeoutMs ?? 5000
+  const runtimeStateCacheTtlMs = options.runtimeStateCacheTtlMs ?? 5000
   const fetchImpl = resolveFetch(options.fetch)
+  const runtimeStateCache = new LRUCache<string, BillingRuntimeState>({
+    max: 10_000,
+    ttl: Math.max(runtimeStateCacheTtlMs, 1),
+    fetchMethod: async (billingOrgId) =>
+      fetchRuntimeStateByBillingOrgId(billingOrgId),
+  })
 
-  async function getRuntimeStateByBillingOrgId(
+  async function fetchRuntimeStateByBillingOrgId(
     billingOrgId: string,
   ): Promise<BillingRuntimeState> {
     const response = await fetchImpl(
@@ -42,6 +50,24 @@ export function createBillingAppsClient(
     )
 
     return (await response.json()) as BillingRuntimeState
+  }
+
+  async function getRuntimeStateByBillingOrgId(
+    billingOrgId: string,
+  ): Promise<BillingRuntimeState> {
+    const state = await runtimeStateCache.fetch(billingOrgId)
+
+    if (!state) {
+      throw new Error(
+        `Billing state response was empty for billingOrgId=${billingOrgId}`,
+      )
+    }
+
+    if (runtimeStateCacheTtlMs === 0) {
+      runtimeStateCache.delete(billingOrgId)
+    }
+
+    return state
   }
 
   async function assertExecutionAllowed(
