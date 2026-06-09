@@ -1,3 +1,11 @@
+export enum BillingFeatureCode {
+  ElevatorCalcAgent = 'elevator-calc-agent',
+}
+
+export enum BillingPrivilegeCode {
+  ElevatorCalcAllowed = 'elevator-calc-allowed',
+}
+
 export type BillingRuntimePrivilegeValueType =
   | 'integer'
   | 'boolean'
@@ -56,10 +64,18 @@ export interface BillingAppsClientOptions {
   fetch?: BillingFetch
 }
 
+export interface BillingExecutionRequirement {
+  feature?: BillingFeatureCode
+  privilege?: BillingPrivilegeCode
+}
+
 export interface BillingAppsClient {
   getRuntimeStateByBillingOrgId(
     billingOrgId: string,
   ): Promise<BillingRuntimeState>
-  assertExecutionAllowed(billingOrgId: string): Promise<BillingRuntimeState>
+  assertExecutionAllowed(
+    billingOrgId: string,
+    requirement?: BillingExecutionRequirement,
+  ): Promise<BillingRuntimeState>
   sendUsageEvent(event: BillingUsageEventInput): Promise<void>
 }
