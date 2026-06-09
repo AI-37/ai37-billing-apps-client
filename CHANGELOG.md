@@ -11,3 +11,7 @@ All notable changes to this project will be documented in this file.
 ## [0.1.1] - 2026-06-05
 
 - Added lru-cache for getRuntimeStateByBillingOrgId
+
+## [0.1.2] - 2026-06-09
+
+- Added flat `features` and `privileges` to `BillingRuntimeState` for customer authorization checks.

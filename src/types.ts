@@ -1,3 +1,28 @@
+export type BillingRuntimePrivilegeValueType =
+  | 'integer'
+  | 'boolean'
+  | 'string'
+  | 'select'
+
+export interface BillingRuntimePrivilegeConfig {
+  selectOptions?: string[]
+}
+
+export interface BillingRuntimePrivilege {
+  code: string
+  name?: string | null
+  value?: number | boolean | string | null
+  valueType: BillingRuntimePrivilegeValueType
+  config: BillingRuntimePrivilegeConfig
+}
+
+export interface BillingRuntimeFeature {
+  code: string
+  name?: string | null
+  description?: string | null
+  privileges: BillingRuntimePrivilege[]
+}
+
 export interface BillingRuntimeState {
   billingOrgId: string
   activeExternalSubscriptionId?: string | null
@@ -5,6 +30,7 @@ export interface BillingRuntimeState {
   currentSubscriptionStatus?: string | null
   entitlementStatus: string
   remainingTotalTokens: number
+  features: BillingRuntimeFeature[]
   trialEndsAt?: string | null
   snapshotUpdatedAt?: string
   snapshotVersion?: number

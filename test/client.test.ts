@@ -44,6 +44,22 @@ describe('createBillingAppsClient', () => {
           billingOrgId: 'org-1',
           entitlementStatus: 'active',
           remainingTotalTokens: 15,
+          features: [
+            {
+              code: 'elevator-calc-agent',
+              name: 'Call elevator calc agent',
+              description: 'Allows access to the elevator calculation agent.',
+              privileges: [
+                {
+                  code: 'elevator-calc-allowed',
+                  name: 'Elevator calc allowed',
+                  value: true,
+                  valueType: 'boolean',
+                  config: {},
+                },
+              ],
+            },
+          ],
           stale: false,
           activeExternalSubscriptionId: 'sub-1',
         }),
@@ -60,6 +76,7 @@ describe('createBillingAppsClient', () => {
     const state = await client.getRuntimeStateByBillingOrgId('org-1')
 
     expect(state.activeExternalSubscriptionId).toBe('sub-1')
+  expect(state.features[0]?.privileges[0]?.valueType).toBe('boolean')
     expect(fetchMock).toHaveBeenCalledWith(
       'https://billing.example.com/api/v1/billing/customers/by-billing-org/org-1/state',
       {
@@ -79,6 +96,19 @@ describe('createBillingAppsClient', () => {
           billingOrgId: 'org-1',
           entitlementStatus: 'active',
           remainingTotalTokens: 15,
+          features: [
+            {
+              code: 'elevator-calc-agent',
+              privileges: [
+                {
+                  code: 'elevator-calc-allowed',
+                  value: true,
+                  valueType: 'boolean',
+                  config: {},
+                },
+              ],
+            },
+          ],
           stale: false,
         }),
         { status: 200 },
@@ -124,6 +154,19 @@ describe('createBillingAppsClient', () => {
           billingOrgId: 'org-1',
           entitlementStatus: 'active',
           remainingTotalTokens: 15,
+          features: [
+            {
+              code: 'elevator-calc-agent',
+              privileges: [
+                {
+                  code: 'elevator-calc-allowed',
+                  value: true,
+                  valueType: 'boolean',
+                  config: {},
+                },
+              ],
+            },
+          ],
           stale: false,
         }),
         { status: 200 },
@@ -135,12 +178,38 @@ describe('createBillingAppsClient', () => {
         billingOrgId: 'org-1',
         entitlementStatus: 'active',
         remainingTotalTokens: 15,
+        features: [
+          {
+            code: 'elevator-calc-agent',
+            privileges: [
+              {
+                code: 'elevator-calc-allowed',
+                value: true,
+                valueType: 'boolean',
+                config: {},
+              },
+            ],
+          },
+        ],
         stale: false,
       },
       {
         billingOrgId: 'org-1',
         entitlementStatus: 'active',
         remainingTotalTokens: 15,
+        features: [
+          {
+            code: 'elevator-calc-agent',
+            privileges: [
+              {
+                code: 'elevator-calc-allowed',
+                value: true,
+                valueType: 'boolean',
+                config: {},
+              },
+            ],
+          },
+        ],
         stale: false,
       },
     ])
@@ -160,6 +229,19 @@ describe('createBillingAppsClient', () => {
             billingOrgId: 'org-1',
             entitlementStatus: 'active',
             remainingTotalTokens: 15,
+            features: [
+              {
+                code: 'elevator-calc-agent',
+                privileges: [
+                  {
+                    code: 'elevator-calc-allowed',
+                    value: true,
+                    valueType: 'boolean',
+                    config: {},
+                  },
+                ],
+              },
+            ],
             stale: false,
           }),
           { status: 200 },
@@ -208,6 +290,7 @@ describe('createBillingAppsClient', () => {
           billingOrgId: 'org-1',
           entitlementStatus: 'no_resources',
           remainingTotalTokens: 0,
+          features: [],
           stale: false,
         }),
         { status: 200 },
