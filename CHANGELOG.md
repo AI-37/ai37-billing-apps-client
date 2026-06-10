@@ -25,3 +25,12 @@ All notable changes to this project will be documented in this file.
 ## [1.0.0] - 2026-06-10
 
 - Removed `externalSubscriptionId` from usage ingest.
+
+## [1.0.1] - 2026-06-10
+
+- Add field `orgId` to BillingRuntimeState.
+- Use field `orgId` for usage ingest.
+
+## [1.0.2] - 2026-06-10
+
+- Use billing state to create usage event input to don't mess with orgId vs billingOrgId.

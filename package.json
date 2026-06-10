@@ -1,6 +1,6 @@
 {
   "name": "@ai37/billing-apps-client",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Framework-agnostic client for AI37 billing-apps public API",
   "repository": {
     "type": "git",

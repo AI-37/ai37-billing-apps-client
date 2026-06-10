@@ -155,11 +155,13 @@ function isPrivilegeAccessible(privilege: BillingRuntimePrivilege): boolean {
   return false
 }
 
-function buildUsageEventPayload(event: BillingUsageEventInput) {
+function buildUsageEventPayload(
+  event: BillingUsageEventInput,
+) {
   return {
     event: {
       transaction_id: event.transactionId,
-      external_customer_id: event.externalCustomerId,
+      external_customer_id: event.billingRuntimeState.orgId,
       code: event.code,
       timestamp: event.timestamp ?? Math.floor(Date.now() / 1000),
       properties: event.properties ?? {},

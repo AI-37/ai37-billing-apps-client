@@ -6,7 +6,7 @@ Framework-agnostic TypeScript client for the public billing-apps API exposed by 
 
 - fetch billing runtime state by `billingOrgId`
 - assert whether execution is currently allowed
-- send usage events using only the organization billing principal
+- send usage events by `billingOrgId`, with `orgId` resolved by the SDK
 - works in both ESM and CommonJS consumers
 
 ## Install
@@ -38,7 +38,7 @@ const state = await billingClient.assertExecutionAllowed('billing-org-123', {
 
 await billingClient.sendUsageEvent({
   transactionId: 'task-123',
-  externalCustomerId: 'billing-org-123',
+  billingOrgId: state.billingOrgId,
   code: 'lift_calculation',
   properties: {
     skill_id: 'calc-lifts',
@@ -66,6 +66,10 @@ Methods:
 - `getRuntimeStateByBillingOrgId(billingOrgId)`
 - `assertExecutionAllowed(billingOrgId, requirement?)`
 - `sendUsageEvent(event)`
+
+`BillingRuntimeState` includes both `orgId` and `billingOrgId`. The SDK uses `orgId`
+for usage ingest routing and keeps `billingOrgId` as the lookup key for public
+runtime state endpoints.
 
 ### `assertExecutionAllowed(billingOrgId, requirement?)`
 
