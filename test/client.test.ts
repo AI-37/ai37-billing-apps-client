@@ -20,7 +20,10 @@ describe('normalizeBillingBaseUrl', () => {
 describe('createBillingAppsClient', () => {
   function buildRuntimeState(overrides?: Record<string, unknown>) {
     return {
+      orgId: 'org-1',
       billingOrgId: 'org-1',
+      licensedExternalSubscriptionId: 'sub-licensed-1',
+      meteredExternalSubscriptionId: 'sub-metered-1',
       entitlementStatus: 'active',
       remainingTotalTokens: 15,
       features: [
@@ -70,7 +73,7 @@ describe('createBillingAppsClient', () => {
       new Response(
         JSON.stringify(
           buildRuntimeState({
-            activeExternalSubscriptionId: 'sub-1',
+            licensedExternalSubscriptionId: 'sub-1',
           }),
         ),
         { status: 200 },
@@ -85,7 +88,8 @@ describe('createBillingAppsClient', () => {
 
     const state = await client.getRuntimeStateByBillingOrgId('org-1')
 
-    expect(state.activeExternalSubscriptionId).toBe('sub-1')
+    expect(state.orgId).toBe('org-1')
+    expect(state.licensedExternalSubscriptionId).toBe('sub-1')
     expect(state.features[0]?.privileges[0]?.valueType).toBe('boolean')
     expect(fetchMock).toHaveBeenCalledWith(
       'https://billing.example.com/api/v1/billing/customers/by-billing-org/org-1/state',
@@ -377,9 +381,22 @@ describe('createBillingAppsClient', () => {
   })
 
   it('posts a Lago-compatible usage event', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ accepted: true }), { status: 200 }),
-    )
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify(
+            buildRuntimeState({
+              orgId: 'org-runtime-1',
+              billingOrgId: 'billing-org-1',
+            }),
+          ),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accepted: true }), { status: 200 }),
+      )
     const client = createBillingAppsClient({
       baseUrl: 'https://billing.example.com/',
       authToken: 'apps-token',
@@ -388,7 +405,7 @@ describe('createBillingAppsClient', () => {
 
     await client.sendUsageEvent({
       transactionId: 'task-1',
-      externalCustomerId: 'org-1',
+      billingOrgId: 'billing-org-1',
       code: 'lift_calculation',
       timestamp: 123456,
       properties: {
@@ -396,7 +413,19 @@ describe('createBillingAppsClient', () => {
       },
     })
 
-    expect(fetchMock).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://billing.example.com/api/v1/billing/customers/by-billing-org/billing-org-1/state',
+      {
+        method: 'GET',
+        headers: {
+          Authorization: 'Bearer apps-token',
+        },
+        signal: expect.any(AbortSignal),
+      },
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
       'https://billing.example.com/api/v1/events',
       {
         method: 'POST',
@@ -407,7 +436,7 @@ describe('createBillingAppsClient', () => {
         body: JSON.stringify({
           event: {
             transaction_id: 'task-1',
-            external_customer_id: 'org-1',
+            external_customer_id: 'org-runtime-1',
             code: 'lift_calculation',
             timestamp: 123456,
             properties: {
@@ -433,7 +462,7 @@ describe('createBillingAppsClient', () => {
     await expect(
       client.sendUsageEvent({
         transactionId: 'task-1',
-        externalCustomerId: 'org-1',
+        billingOrgId: 'org-1',
         code: 'lift_calculation',
       }),
     ).rejects.toMatchObject({

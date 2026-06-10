@@ -89,7 +89,8 @@ export function createBillingAppsClient(
   }
 
   async function sendUsageEvent(event: BillingUsageEventInput): Promise<void> {
-    const payload = buildUsageEventPayload(event)
+    const state = await getRuntimeStateByBillingOrgId(event.billingOrgId)
+    const payload = buildUsageEventPayload(event, state.orgId)
     const response = await fetchImpl(`${baseUrl}/api/v1/events`, {
       method: 'POST',
       headers: {
@@ -155,11 +156,14 @@ function isPrivilegeAccessible(privilege: BillingRuntimePrivilege): boolean {
   return false
 }
 
-function buildUsageEventPayload(event: BillingUsageEventInput) {
+function buildUsageEventPayload(
+  event: BillingUsageEventInput,
+  orgId: string,
+) {
   return {
     event: {
       transaction_id: event.transactionId,
-      external_customer_id: event.externalCustomerId,
+      external_customer_id: orgId,
       code: event.code,
       timestamp: event.timestamp ?? Math.floor(Date.now() / 1000),
       properties: event.properties ?? {},

@@ -32,8 +32,10 @@ export interface BillingRuntimeFeature {
 }
 
 export interface BillingRuntimeState {
+  orgId: string
   billingOrgId: string
-  activeExternalSubscriptionId?: string | null
+  licensedExternalSubscriptionId?: string | null
+  meteredExternalSubscriptionId?: string | null
   currentPlanCode?: string | null
   currentSubscriptionStatus?: string | null
   entitlementStatus: string
@@ -47,7 +49,7 @@ export interface BillingRuntimeState {
 
 export interface BillingUsageEventInput {
   transactionId: string
-  externalCustomerId: string
+  billingOrgId: string
   code: string
   timestamp?: number
   properties?: Record<string, unknown>
