@@ -48,7 +48,6 @@ export interface BillingRuntimeState {
 export interface BillingUsageEventInput {
   transactionId: string
   externalCustomerId: string
-  externalSubscriptionId: string
   code: string
   timestamp?: number
   properties?: Record<string, unknown>

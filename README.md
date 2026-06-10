@@ -6,7 +6,7 @@ Framework-agnostic TypeScript client for the public billing-apps API exposed by 
 
 - fetch billing runtime state by `billingOrgId`
 - assert whether execution is currently allowed
-- send Lago-compatible usage events to the billing facade
+- send usage events using only the organization billing principal
 - works in both ESM and CommonJS consumers
 
 ## Install
@@ -39,7 +39,6 @@ const state = await billingClient.assertExecutionAllowed('billing-org-123', {
 await billingClient.sendUsageEvent({
   transactionId: 'task-123',
   externalCustomerId: 'billing-org-123',
-  externalSubscriptionId: state.activeExternalSubscriptionId!,
   code: 'lift_calculation',
   properties: {
     skill_id: 'calc-lifts',

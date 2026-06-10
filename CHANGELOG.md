@@ -21,3 +21,7 @@ All notable changes to this project will be documented in this file.
 - Replaced flat runtime permissions with nested `features[].privileges[]` objects.
 - Added enum-based optional feature and privilege checks to `assertExecutionAllowed`.
 - Added README examples for typed `assertExecutionAllowed` access checks.
+
+## [1.0.0] - 2026-06-10
+
+- Removed `externalSubscriptionId` from usage ingest.

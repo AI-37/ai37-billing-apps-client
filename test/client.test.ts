@@ -389,7 +389,6 @@ describe('createBillingAppsClient', () => {
     await client.sendUsageEvent({
       transactionId: 'task-1',
       externalCustomerId: 'org-1',
-      externalSubscriptionId: 'sub-1',
       code: 'lift_calculation',
       timestamp: 123456,
       properties: {
@@ -409,7 +408,6 @@ describe('createBillingAppsClient', () => {
           event: {
             transaction_id: 'task-1',
             external_customer_id: 'org-1',
-            external_subscription_id: 'sub-1',
             code: 'lift_calculation',
             timestamp: 123456,
             properties: {
@@ -436,7 +434,6 @@ describe('createBillingAppsClient', () => {
       client.sendUsageEvent({
         transactionId: 'task-1',
         externalCustomerId: 'org-1',
-        externalSubscriptionId: 'sub-1',
         code: 'lift_calculation',
       }),
     ).rejects.toMatchObject({

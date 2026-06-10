@@ -160,7 +160,6 @@ function buildUsageEventPayload(event: BillingUsageEventInput) {
     event: {
       transaction_id: event.transactionId,
       external_customer_id: event.externalCustomerId,
-      external_subscription_id: event.externalSubscriptionId,
       code: event.code,
       timestamp: event.timestamp ?? Math.floor(Date.now() / 1000),
       properties: event.properties ?? {},
