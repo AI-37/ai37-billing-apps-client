@@ -30,3 +30,7 @@ All notable changes to this project will be documented in this file.
 
 - Add field `orgId` to BillingRuntimeState.
 - Use field `orgId` for usage ingest.
+
+## [1.0.2] - 2026-06-10
+
+- Use billing state to create usage event input to don't mess with orgId vs billingOrgId.

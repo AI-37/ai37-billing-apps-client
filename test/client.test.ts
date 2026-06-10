@@ -8,6 +8,7 @@ import {
   createBillingAppsClient,
   normalizeBillingBaseUrl,
 } from '../src/index'
+import type { BillingRuntimeState } from '../src/index'
 
 describe('normalizeBillingBaseUrl', () => {
   it('removes duplicate trailing slash and api suffix', () => {
@@ -18,7 +19,9 @@ describe('normalizeBillingBaseUrl', () => {
 })
 
 describe('createBillingAppsClient', () => {
-  function buildRuntimeState(overrides?: Record<string, unknown>) {
+  function buildRuntimeState(
+    overrides?: Partial<BillingRuntimeState>,
+  ): BillingRuntimeState {
     return {
       orgId: 'org-1',
       billingOrgId: 'org-1',
@@ -381,19 +384,12 @@ describe('createBillingAppsClient', () => {
   })
 
   it('posts a Lago-compatible usage event', async () => {
+    const runtimeState = buildRuntimeState({
+      orgId: 'org-runtime-1',
+      billingOrgId: 'billing-org-1',
+    })
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            buildRuntimeState({
-              orgId: 'org-runtime-1',
-              billingOrgId: 'billing-org-1',
-            }),
-          ),
-          { status: 200 },
-        ),
-      )
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ accepted: true }), { status: 200 }),
       )
@@ -405,7 +401,7 @@ describe('createBillingAppsClient', () => {
 
     await client.sendUsageEvent({
       transactionId: 'task-1',
-      billingOrgId: 'billing-org-1',
+      billingRuntimeState: runtimeState,
       code: 'lift_calculation',
       timestamp: 123456,
       properties: {
@@ -413,19 +409,9 @@ describe('createBillingAppsClient', () => {
       },
     })
 
+    expect(fetchMock).toHaveBeenCalledOnce()
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      'https://billing.example.com/api/v1/billing/customers/by-billing-org/billing-org-1/state',
-      {
-        method: 'GET',
-        headers: {
-          Authorization: 'Bearer apps-token',
-        },
-        signal: expect.any(AbortSignal),
-      },
-    )
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
       'https://billing.example.com/api/v1/events',
       {
         method: 'POST',
@@ -462,7 +448,10 @@ describe('createBillingAppsClient', () => {
     await expect(
       client.sendUsageEvent({
         transactionId: 'task-1',
-        billingOrgId: 'org-1',
+        billingRuntimeState: buildRuntimeState({
+          orgId: 'org-runtime-1',
+          billingOrgId: 'org-1',
+        }),
         code: 'lift_calculation',
       }),
     ).rejects.toMatchObject({

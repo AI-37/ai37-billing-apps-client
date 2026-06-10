@@ -49,7 +49,7 @@ export interface BillingRuntimeState {
 
 export interface BillingUsageEventInput {
   transactionId: string
-  billingOrgId: string
+  billingRuntimeState: BillingRuntimeState
   code: string
   timestamp?: number
   properties?: Record<string, unknown>
