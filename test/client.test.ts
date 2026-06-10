@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  BillingFeatureCode,
+  BillingPrivilegeCode,
   BillingConfigurationError,
   BillingExecutionDeniedError,
   BillingRequestError,
@@ -16,6 +18,32 @@ describe('normalizeBillingBaseUrl', () => {
 })
 
 describe('createBillingAppsClient', () => {
+  function buildRuntimeState(overrides?: Record<string, unknown>) {
+    return {
+      billingOrgId: 'org-1',
+      entitlementStatus: 'active',
+      remainingTotalTokens: 15,
+      features: [
+        {
+          code: BillingFeatureCode.ElevatorCalcAgent,
+          name: 'Call elevator calc agent',
+          description: 'Allows access to the elevator calculation agent.',
+          privileges: [
+            {
+              code: BillingPrivilegeCode.ElevatorCalcAllowed,
+              name: 'Elevator calc allowed',
+              value: true,
+              valueType: 'boolean',
+              config: {},
+            },
+          ],
+        },
+      ],
+      stale: false,
+      ...overrides,
+    }
+  }
+
   it('throws when baseUrl is empty', () => {
     expect(() =>
       createBillingAppsClient({
@@ -40,13 +68,11 @@ describe('createBillingAppsClient', () => {
   it('fetches billing state by billingOrgId', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
-        JSON.stringify({
-          billingOrgId: 'org-1',
-          entitlementStatus: 'active',
-          remainingTotalTokens: 15,
-          stale: false,
-          activeExternalSubscriptionId: 'sub-1',
-        }),
+        JSON.stringify(
+          buildRuntimeState({
+            activeExternalSubscriptionId: 'sub-1',
+          }),
+        ),
         { status: 200 },
       ),
     )
@@ -60,6 +86,7 @@ describe('createBillingAppsClient', () => {
     const state = await client.getRuntimeStateByBillingOrgId('org-1')
 
     expect(state.activeExternalSubscriptionId).toBe('sub-1')
+    expect(state.features[0]?.privileges[0]?.valueType).toBe('boolean')
     expect(fetchMock).toHaveBeenCalledWith(
       'https://billing.example.com/api/v1/billing/customers/by-billing-org/org-1/state',
       {
@@ -75,12 +102,7 @@ describe('createBillingAppsClient', () => {
   it('reuses cached billing state for repeated calls within ttl', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
-        JSON.stringify({
-          billingOrgId: 'org-1',
-          entitlementStatus: 'active',
-          remainingTotalTokens: 15,
-          stale: false,
-        }),
+        JSON.stringify(buildRuntimeState()),
         { status: 200 },
       ),
     )
@@ -120,29 +142,14 @@ describe('createBillingAppsClient', () => {
 
     resolveResponse?.(
       new Response(
-        JSON.stringify({
-          billingOrgId: 'org-1',
-          entitlementStatus: 'active',
-          remainingTotalTokens: 15,
-          stale: false,
-        }),
+        JSON.stringify(buildRuntimeState()),
         { status: 200 },
       ),
     )
 
     await expect(Promise.all([firstRequest, secondRequest])).resolves.toEqual([
-      {
-        billingOrgId: 'org-1',
-        entitlementStatus: 'active',
-        remainingTotalTokens: 15,
-        stale: false,
-      },
-      {
-        billingOrgId: 'org-1',
-        entitlementStatus: 'active',
-        remainingTotalTokens: 15,
-        stale: false,
-      },
+      buildRuntimeState(),
+      buildRuntimeState(),
     ])
   })
 
@@ -156,12 +163,7 @@ describe('createBillingAppsClient', () => {
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({
-            billingOrgId: 'org-1',
-            entitlementStatus: 'active',
-            remainingTotalTokens: 15,
-            stale: false,
-          }),
+          JSON.stringify(buildRuntimeState()),
           { status: 200 },
         ),
       )
@@ -204,12 +206,13 @@ describe('createBillingAppsClient', () => {
   it('throws execution denied when entitlement is inactive', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
-        JSON.stringify({
-          billingOrgId: 'org-1',
-          entitlementStatus: 'no_resources',
-          remainingTotalTokens: 0,
-          stale: false,
-        }),
+        JSON.stringify(
+          buildRuntimeState({
+            entitlementStatus: 'no_resources',
+            remainingTotalTokens: 0,
+            features: [],
+          }),
+        ),
         { status: 200 },
       ),
     )
@@ -222,6 +225,155 @@ describe('createBillingAppsClient', () => {
     await expect(client.assertExecutionAllowed('org-1')).rejects.toBeInstanceOf(
       BillingExecutionDeniedError,
     )
+  })
+
+  it('allows execution when the required feature is present', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(buildRuntimeState()), { status: 200 }),
+    )
+    const client = createBillingAppsClient({
+      baseUrl: 'https://billing.example.com',
+      authToken: 'apps-token',
+      fetch: fetchMock as typeof fetch,
+    })
+
+    await expect(
+      client.assertExecutionAllowed('org-1', {
+        feature: BillingFeatureCode.ElevatorCalcAgent,
+      }),
+    ).resolves.toMatchObject({
+      billingOrgId: 'org-1',
+    })
+  })
+
+  it('allows execution when the required feature and privilege are present', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(buildRuntimeState()), { status: 200 }),
+    )
+    const client = createBillingAppsClient({
+      baseUrl: 'https://billing.example.com',
+      authToken: 'apps-token',
+      fetch: fetchMock as typeof fetch,
+    })
+
+    await expect(
+      client.assertExecutionAllowed('org-1', {
+        feature: BillingFeatureCode.ElevatorCalcAgent,
+        privilege: BillingPrivilegeCode.ElevatorCalcAllowed,
+      }),
+    ).resolves.toMatchObject({
+      billingOrgId: 'org-1',
+    })
+  })
+
+  it('denies execution when the required feature is missing', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(buildRuntimeState({ features: [] })), { status: 200 }),
+    )
+    const client = createBillingAppsClient({
+      baseUrl: 'https://billing.example.com',
+      authToken: 'apps-token',
+      fetch: fetchMock as typeof fetch,
+    })
+
+    await expect(
+      client.assertExecutionAllowed('org-1', {
+        feature: BillingFeatureCode.ElevatorCalcAgent,
+      }),
+    ).rejects.toBeInstanceOf(BillingExecutionDeniedError)
+  })
+
+  it('denies execution when the required privilege is disabled', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify(
+          buildRuntimeState({
+            features: [
+              {
+                code: BillingFeatureCode.ElevatorCalcAgent,
+                privileges: [
+                  {
+                    code: BillingPrivilegeCode.ElevatorCalcAllowed,
+                    value: false,
+                    valueType: 'boolean',
+                    config: {},
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+        { status: 200 },
+      ),
+    )
+    const client = createBillingAppsClient({
+      baseUrl: 'https://billing.example.com',
+      authToken: 'apps-token',
+      fetch: fetchMock as typeof fetch,
+    })
+
+    await expect(
+      client.assertExecutionAllowed('org-1', {
+        privilege: BillingPrivilegeCode.ElevatorCalcAllowed,
+      }),
+    ).rejects.toBeInstanceOf(BillingExecutionDeniedError)
+  })
+
+  it.each([
+    {
+      title: 'integer',
+      value: 5,
+      valueType: 'integer' as const,
+      config: {},
+    },
+    {
+      title: 'string',
+      value: 'advanced',
+      valueType: 'string' as const,
+      config: {},
+    },
+    {
+      title: 'select',
+      value: 'okta',
+      valueType: 'select' as const,
+      config: { selectOptions: ['google', 'okta'] },
+    },
+  ])('allows granted $title privilege values', async ({ value, valueType, config }) => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify(
+          buildRuntimeState({
+            features: [
+              {
+                code: BillingFeatureCode.ElevatorCalcAgent,
+                privileges: [
+                  {
+                    code: BillingPrivilegeCode.ElevatorCalcAllowed,
+                    value,
+                    valueType,
+                    config,
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+        { status: 200 },
+      ),
+    )
+    const client = createBillingAppsClient({
+      baseUrl: 'https://billing.example.com',
+      authToken: 'apps-token',
+      fetch: fetchMock as typeof fetch,
+    })
+
+    await expect(
+      client.assertExecutionAllowed('org-1', {
+        privilege: BillingPrivilegeCode.ElevatorCalcAllowed,
+      }),
+    ).resolves.toMatchObject({
+      billingOrgId: 'org-1',
+    })
   })
 
   it('posts a Lago-compatible usage event', async () => {
@@ -237,7 +389,6 @@ describe('createBillingAppsClient', () => {
     await client.sendUsageEvent({
       transactionId: 'task-1',
       externalCustomerId: 'org-1',
-      externalSubscriptionId: 'sub-1',
       code: 'lift_calculation',
       timestamp: 123456,
       properties: {
@@ -257,7 +408,6 @@ describe('createBillingAppsClient', () => {
           event: {
             transaction_id: 'task-1',
             external_customer_id: 'org-1',
-            external_subscription_id: 'sub-1',
             code: 'lift_calculation',
             timestamp: 123456,
             properties: {
@@ -284,7 +434,6 @@ describe('createBillingAppsClient', () => {
       client.sendUsageEvent({
         transactionId: 'task-1',
         externalCustomerId: 'org-1',
-        externalSubscriptionId: 'sub-1',
         code: 'lift_calculation',
       }),
     ).rejects.toMatchObject({

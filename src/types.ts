@@ -1,3 +1,36 @@
+export enum BillingFeatureCode {
+  ElevatorCalcAgent = 'elevator-calc-agent',
+}
+
+export enum BillingPrivilegeCode {
+  ElevatorCalcAllowed = 'elevator-calc-allowed',
+}
+
+export type BillingRuntimePrivilegeValueType =
+  | 'integer'
+  | 'boolean'
+  | 'string'
+  | 'select'
+
+export interface BillingRuntimePrivilegeConfig {
+  selectOptions?: string[]
+}
+
+export interface BillingRuntimePrivilege {
+  code: string
+  name?: string | null
+  value?: number | boolean | string | null
+  valueType: BillingRuntimePrivilegeValueType
+  config: BillingRuntimePrivilegeConfig
+}
+
+export interface BillingRuntimeFeature {
+  code: string
+  name?: string | null
+  description?: string | null
+  privileges: BillingRuntimePrivilege[]
+}
+
 export interface BillingRuntimeState {
   billingOrgId: string
   activeExternalSubscriptionId?: string | null
@@ -5,6 +38,7 @@ export interface BillingRuntimeState {
   currentSubscriptionStatus?: string | null
   entitlementStatus: string
   remainingTotalTokens: number
+  features: BillingRuntimeFeature[]
   trialEndsAt?: string | null
   snapshotUpdatedAt?: string
   snapshotVersion?: number
@@ -14,7 +48,6 @@ export interface BillingRuntimeState {
 export interface BillingUsageEventInput {
   transactionId: string
   externalCustomerId: string
-  externalSubscriptionId: string
   code: string
   timestamp?: number
   properties?: Record<string, unknown>
@@ -30,10 +63,18 @@ export interface BillingAppsClientOptions {
   fetch?: BillingFetch
 }
 
+export interface BillingExecutionRequirement {
+  feature?: BillingFeatureCode
+  privilege?: BillingPrivilegeCode
+}
+
 export interface BillingAppsClient {
   getRuntimeStateByBillingOrgId(
     billingOrgId: string,
   ): Promise<BillingRuntimeState>
-  assertExecutionAllowed(billingOrgId: string): Promise<BillingRuntimeState>
+  assertExecutionAllowed(
+    billingOrgId: string,
+    requirement?: BillingExecutionRequirement,
+  ): Promise<BillingRuntimeState>
   sendUsageEvent(event: BillingUsageEventInput): Promise<void>
 }

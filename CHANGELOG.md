@@ -11,3 +11,17 @@ All notable changes to this project will be documented in this file.
 ## [0.1.1] - 2026-06-05
 
 - Added lru-cache for getRuntimeStateByBillingOrgId
+
+## [0.1.2] - 2026-06-09
+
+- Added flat `features` and `privileges` to `BillingRuntimeState` for customer authorization checks.
+
+## [0.1.3] - 2026-06-09
+
+- Replaced flat runtime permissions with nested `features[].privileges[]` objects.
+- Added enum-based optional feature and privilege checks to `assertExecutionAllowed`.
+- Added README examples for typed `assertExecutionAllowed` access checks.
+
+## [1.0.0] - 2026-06-10
+
+- Removed `externalSubscriptionId` from usage ingest.

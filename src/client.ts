@@ -9,6 +9,8 @@ import {
 import type {
   BillingAppsClient,
   BillingAppsClientOptions,
+  BillingExecutionRequirement,
+  BillingRuntimePrivilege,
   BillingRuntimeState,
   BillingUsageEventInput,
 } from './types'
@@ -72,11 +74,13 @@ export function createBillingAppsClient(
 
   async function assertExecutionAllowed(
     billingOrgId: string,
+    requirement?: BillingExecutionRequirement,
   ): Promise<BillingRuntimeState> {
     const state = await getRuntimeStateByBillingOrgId(billingOrgId)
     if (
       state.entitlementStatus !== 'active' ||
-      state.remainingTotalTokens <= 0
+      state.remainingTotalTokens <= 0 ||
+      !hasRequiredAccess(state, requirement)
     ) {
       throw new BillingExecutionDeniedError(state)
     }
@@ -106,12 +110,56 @@ export function createBillingAppsClient(
   }
 }
 
+function hasRequiredAccess(
+  state: BillingRuntimeState,
+  requirement?: BillingExecutionRequirement,
+): boolean {
+  if (!requirement?.feature && !requirement?.privilege) {
+    return true
+  }
+
+  const matchingFeatures = requirement?.feature
+    ? state.features.filter((feature) => feature.code === requirement.feature)
+    : state.features
+
+  if (matchingFeatures.length === 0) {
+    return false
+  }
+
+  if (!requirement?.privilege) {
+    return true
+  }
+
+  return matchingFeatures.some((feature) =>
+    feature.privileges.some(
+      (privilege) =>
+        privilege.code === requirement.privilege &&
+        isPrivilegeAccessible(privilege),
+    ),
+  )
+}
+
+function isPrivilegeAccessible(privilege: BillingRuntimePrivilege): boolean {
+  if (privilege.valueType === 'boolean') {
+    return privilege.value === true
+  }
+
+  if (privilege.valueType === 'integer') {
+    return typeof privilege.value === 'number'
+  }
+
+  if (privilege.valueType === 'string' || privilege.valueType === 'select') {
+    return typeof privilege.value === 'string' && privilege.value.length > 0
+  }
+
+  return false
+}
+
 function buildUsageEventPayload(event: BillingUsageEventInput) {
   return {
     event: {
       transaction_id: event.transactionId,
       external_customer_id: event.externalCustomerId,
-      external_subscription_id: event.externalSubscriptionId,
       code: event.code,
       timestamp: event.timestamp ?? Math.floor(Date.now() / 1000),
       properties: event.properties ?? {},

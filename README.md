@@ -6,7 +6,7 @@ Framework-agnostic TypeScript client for the public billing-apps API exposed by 
 
 - fetch billing runtime state by `billingOrgId`
 - assert whether execution is currently allowed
-- send Lago-compatible usage events to the billing facade
+- send usage events using only the organization billing principal
 - works in both ESM and CommonJS consumers
 
 ## Install
@@ -18,7 +18,11 @@ npm install @ai37/billing-apps-client
 ## Usage
 
 ```ts
-import { createBillingAppsClient } from '@ai37/billing-apps-client'
+import {
+  BillingFeatureCode,
+  BillingPrivilegeCode,
+  createBillingAppsClient,
+} from '@ai37/billing-apps-client'
 
 const billingClient = createBillingAppsClient({
   baseUrl: process.env.BILLING_MICROSERVICE_BASE_URL!,
@@ -27,12 +31,14 @@ const billingClient = createBillingAppsClient({
   runtimeStateCacheTtlMs: 5000,
 })
 
-const state = await billingClient.assertExecutionAllowed('billing-org-123')
+const state = await billingClient.assertExecutionAllowed('billing-org-123', {
+  feature: BillingFeatureCode.ElevatorCalcAgent,
+  privilege: BillingPrivilegeCode.ElevatorCalcAllowed,
+})
 
 await billingClient.sendUsageEvent({
   transactionId: 'task-123',
   externalCustomerId: 'billing-org-123',
-  externalSubscriptionId: state.activeExternalSubscriptionId!,
   code: 'lift_calculation',
   properties: {
     skill_id: 'calc-lifts',
@@ -58,8 +64,33 @@ Options:
 Methods:
 
 - `getRuntimeStateByBillingOrgId(billingOrgId)`
-- `assertExecutionAllowed(billingOrgId)`
+- `assertExecutionAllowed(billingOrgId, requirement?)`
 - `sendUsageEvent(event)`
+
+### `assertExecutionAllowed(billingOrgId, requirement?)`
+
+Checks that:
+
+- subscription entitlement status is `active`
+- `remainingTotalTokens` is positive
+- optional required `feature` exists in `state.features`
+- optional required `privilege` exists in the selected feature, or in any feature if `feature` is omitted
+
+Supported enums:
+
+- `BillingFeatureCode`
+- `BillingPrivilegeCode`
+
+Example:
+
+```ts
+await billingClient.assertExecutionAllowed('billing-org-123', {
+  feature: BillingFeatureCode.ElevatorCalcAgent,
+  privilege: BillingPrivilegeCode.ElevatorCalcAllowed,
+})
+```
+
+For boolean privileges, access is granted only when the privilege value is `true`.
 
 ## Publish
 
