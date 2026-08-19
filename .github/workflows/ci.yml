@@ -1,16 +1,24 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
+  # Ручной запуск — чтобы можно было прогнать CI на self-hosted раннере
+  # (например когда исчерпаны минуты GitHub-hosted). На push/PR input не задан,
+  # inputs.runner пуст → все джобы идут на ubuntu-latest как раньше.
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner for CI jobs
+        type: choice
+        required: true
+        default: ubuntu-latest
+        options:
+          - ubuntu-latest
+          - ai37-self-hosted
   workflow_call:
-
 jobs:
   test-and-validate:
-    runs-on: ubuntu-latest
-
+    runs-on: ${{ inputs.runner == 'ai37-self-hosted' && fromJSON('["self-hosted", "ai37-local-1"]') || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
