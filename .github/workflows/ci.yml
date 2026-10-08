@@ -6,10 +6,24 @@ on:
       - main
   pull_request:
   workflow_call:
+  # Раннер (канон AI-37, одинаковый во всех репо): ручной запуск с runner=ubuntu-latest или
+  # ai37-self-hosted выбирает явно; auto и автопрогон на PR берут переменную CI_RUNNER (репо или
+  # организации, JSON-массив меток, напр. ["self-hosted","ai37-local-1"]), без неё — ubuntu-latest.
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner: auto = переменная CI_RUNNER, иначе ubuntu-latest"
+        type: choice
+        required: true
+        default: auto
+        options:
+          - auto
+          - ubuntu-latest
+          - ai37-self-hosted
 
 jobs:
   test-and-validate:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner == 'ai37-self-hosted' && fromJSON('["self-hosted", "ai37-local-1"]') || inputs.runner == 'ubuntu-latest' && 'ubuntu-latest' || vars.CI_RUNNER && fromJSON(vars.CI_RUNNER) || 'ubuntu-latest' }}
 
     steps:
       - name: Checkout
